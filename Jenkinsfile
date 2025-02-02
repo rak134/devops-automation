@@ -1,7 +1,7 @@
 @Library('jenkins-shared-library') _
 
 pipeline {
-    agent any
+    agent Slave
     environment {
         AWS_ACCOUNT_ID = constants.AWS_ACCOUNT_ID
         AWS_DEFAULT_REGION = constants.AWS_DEFAULT_REGION
