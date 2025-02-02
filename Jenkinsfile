@@ -1,16 +1,16 @@
 @Library('jenkins-shared-library') _
 
 pipeline {
-    agent Slave
+    agent { label 'Slave' }
     environment {
-        AWS_ACCOUNT_ID = constants.AWS_ACCOUNT_ID
-        AWS_DEFAULT_REGION = constants.AWS_DEFAULT_REGION
-        IMAGE_REPO_NAME = constants.IMAGE_REPO_NAME
+        AWS_ACCOUNT_ID = 'your-aws-account-id'
+        AWS_DEFAULT_REGION = 'your-region'
+        IMAGE_REPO_NAME = 'your-repo-name'
         IMAGE_TAG = "latest"
         REPOSITORY_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${IMAGE_REPO_NAME}"
-        GIT_REPO_URL = constants.GIT_REPO_URL
-        GIT_CREDENTIALS_ID = constants.GIT_CREDENTIALS_ID
-        ECR_CREDENTIALS_ID = constants.ECR_CREDENTIALS_ID
+        GIT_REPO_URL = 'https://your-repo-url.git'
+        GIT_CREDENTIALS_ID = 'your-credentials-id'
+        ECR_CREDENTIALS_ID = 'your-ecr-credentials-id'
     }
 
     stages {
