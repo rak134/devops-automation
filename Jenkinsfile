@@ -2,19 +2,19 @@
 
 pipeline {
     agent { label 'Slave' }
-    
+
     environment {
         // Access constants from the shared library
-        constants = constants()  // Call to shared library to fetch constants
+        constants = constants()  // Fetch constants from the shared library
 
-        AWS_ACCOUNT_ID = constants.AWS_ACCOUNT_ID
-        AWS_DEFAULT_REGION = constants.AWS_DEFAULT_REGION
-        IMAGE_REPO_NAME = constants.IMAGE_REPO_NAME
+        AWS_ACCOUNT_ID = "${constants.AWS_ACCOUNT_ID}"
+        AWS_DEFAULT_REGION = "${constants.AWS_DEFAULT_REGION}"
+        IMAGE_REPO_NAME = "${constants.IMAGE_REPO_NAME}"
         IMAGE_TAG = "latest"
         REPOSITORY_URI = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${IMAGE_REPO_NAME}"
-        GIT_REPO_URL = constants.GIT_REPO_URL
-        GIT_CREDENTIALS_ID = constants.GIT_CREDENTIALS_ID
-        ECR_CREDENTIALS_ID = constants.ECR_CREDENTIALS_ID
+        GIT_REPO_URL = "${constants.GIT_REPO_URL}"
+        GIT_CREDENTIALS_ID = "${constants.GIT_CREDENTIALS_ID}"
+        ECR_CREDENTIALS_ID = "${constants.ECR_CREDENTIALS_ID}"
     }
 
     stages {
