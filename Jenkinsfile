@@ -1,11 +1,11 @@
-@Library('jenkins-shared-library') _
+@Library('Jenkins-Shared-library@main') _
 
 pipeline {
-    agent { label 'Slave' }
+    agent any
 
     environment {
-        // Load constants from the shared library
-        constants = constants()
+        // Access constants from the shared library
+        constants = constants()  // Fetch constants from the shared library
 
         AWS_ACCOUNT_ID = "${constants.AWS_ACCOUNT_ID}"
         AWS_DEFAULT_REGION = "${constants.AWS_DEFAULT_REGION}"
@@ -18,7 +18,15 @@ pipeline {
     }
 
     stages {
-        stage('Logging into AWS ECR') {
+        stage('Cleanup Docker Environment') {
+            steps {
+                script {
+                    sh 'docker system prune -af || true'
+                }
+            }
+        }
+
+        stage('Login into AWS ECR') {
             steps {
                 script {
                     withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: ECR_CREDENTIALS_ID]]) {
@@ -44,7 +52,7 @@ pipeline {
             }
         }
 
-        stage('Building Docker Image') {
+        stage('Build Docker Image') {
             steps {
                 script {
                     sh "docker build -t ${IMAGE_REPO_NAME}:${IMAGE_TAG} ."
@@ -52,7 +60,7 @@ pipeline {
             }
         }
 
-        stage('Tagging Docker Image') {
+        stage('Tag Docker Image') {
             steps {
                 script {
                     sh "docker tag ${IMAGE_REPO_NAME}:${IMAGE_TAG} ${REPOSITORY_URI}:${IMAGE_TAG}"
@@ -60,29 +68,31 @@ pipeline {
             }
         }
 
-        stage('Pushing Image to ECR') {
+        stage('Run Docker Container') {
             steps {
                 script {
-                    sh "docker push ${REPOSITORY_URI}:${IMAGE_TAG}"
+                    def containerName = "${IMAGE_REPO_NAME}-container"
+
+                    echo "Stopping and removing existing container if it exists"
+                    sh """
+                        if docker ps -q --filter "name=${containerName}" | grep -q . ; then
+                            docker stop ${containerName} || true
+                            docker rm ${containerName} || true
+                        fi
+                    """
+
+                    echo "Running Docker container on port 9000"
+                    sh """
+                        docker run -d -p 9000:9000 --name ${containerName} ${IMAGE_REPO_NAME}:latest
+                    """
                 }
             }
         }
 
-        stage('Running Docker Container on Slave EC2') {
+        stage('Push Image to ECR') {
             steps {
                 script {
-                    // Stop the previous container if running (Optional)
-                    sh """
-                        if docker ps -q --filter "name=${IMAGE_REPO_NAME}" | grep -q . ; then
-                            docker stop ${IMAGE_REPO_NAME}
-                            docker rm ${IMAGE_REPO_NAME}
-                        fi
-                    """
-
-                    // Run a new Tomcat container
-                    sh """
-                        docker run -d --name ${IMAGE_REPO_NAME} -p 9000:9000 ${REPOSITORY_URI}:${IMAGE_TAG}
-                    """
+                    sh "docker push ${REPOSITORY_URI}:${IMAGE_TAG}"
                 }
             }
         }
