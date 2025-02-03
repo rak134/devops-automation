@@ -4,8 +4,8 @@ pipeline {
     agent { label 'Slave' }
 
     environment {
-        // Access constants from the shared library
-        constants = constants()  // Fetch constants from the shared library
+        // Load constants from the shared library
+        constants = constants()
 
         AWS_ACCOUNT_ID = "${constants.AWS_ACCOUNT_ID}"
         AWS_DEFAULT_REGION = "${constants.AWS_DEFAULT_REGION}"
@@ -71,9 +71,17 @@ pipeline {
         stage('Running Docker Container on Slave EC2') {
             steps {
                 script {
-                    // Run the container without stopping/removing any previous instance
+                    // Stop the previous container if running (Optional)
                     sh """
-                        docker run -d --name ${IMAGE_REPO_NAME}_\\$(date +%s) -p 9000:9000 ${REPOSITORY_URI}:${IMAGE_TAG}
+                        if docker ps -q --filter "name=${IMAGE_REPO_NAME}" | grep -q . ; then
+                            docker stop ${IMAGE_REPO_NAME}
+                            docker rm ${IMAGE_REPO_NAME}
+                        fi
+                    """
+
+                    // Run a new Tomcat container
+                    sh """
+                        docker run -d --name ${IMAGE_REPO_NAME} -p 9000:9000 ${REPOSITORY_URI}:${IMAGE_TAG}
                     """
                 }
             }
