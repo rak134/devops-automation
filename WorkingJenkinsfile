@@ -4,8 +4,8 @@ pipeline {
     agent { label 'Slave' }
 
     environment {
-        // Access constants from the shared library
-        constants = constants()  // Fetch constants from the shared library
+        // Load constants from the shared library
+        constants = constants()
 
         AWS_ACCOUNT_ID = "${constants.AWS_ACCOUNT_ID}"
         AWS_DEFAULT_REGION = "${constants.AWS_DEFAULT_REGION}"
@@ -18,14 +18,6 @@ pipeline {
     }
 
     stages {
-        stage('Cleanup Docker Environment') {
-            steps {
-                script {
-                    sh 'docker system prune -af || true'
-                }
-            }
-        }
-
         stage('Logging into AWS ECR') {
             steps {
                 script {
@@ -76,11 +68,21 @@ pipeline {
             }
         }
 
-        stage('Final Cleanup') {
+        stage('Running Docker Container on Slave EC2') {
             steps {
                 script {
-                    sh "docker rmi -f ${IMAGE_REPO_NAME}:${IMAGE_TAG} || true"
-                    sh "docker rmi -f ${REPOSITORY_URI}:${IMAGE_TAG} || true"
+                    // Stop the previous container if running (Optional)
+                    sh """
+                        if docker ps -q --filter "name=${IMAGE_REPO_NAME}" | grep -q . ; then
+                            docker stop ${IMAGE_REPO_NAME}
+                            docker rm ${IMAGE_REPO_NAME}
+                        fi
+                    """
+
+                    // Run a new Tomcat container
+                    sh """
+                        docker run -d --name ${IMAGE_REPO_NAME} -p 9000:9000 ${REPOSITORY_URI}:${IMAGE_TAG}
+                    """
                 }
             }
         }
