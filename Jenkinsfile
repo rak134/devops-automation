@@ -1,7 +1,7 @@
 @Library('jenkins-shared-library') _
 
 pipeline {
-    agent any
+    agent { label 'Slave' }
 
     environment {
         // Access constants from the shared library
@@ -26,7 +26,7 @@ pipeline {
             }
         }
 
-        stage('Login into AWS ECR') {
+        stage('Logging into AWS ECR') {
             steps {
                 script {
                     withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: ECR_CREDENTIALS_ID]]) {
@@ -52,7 +52,7 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Building Docker Image') {
             steps {
                 script {
                     sh "docker build -t ${IMAGE_REPO_NAME}:${IMAGE_TAG} ."
@@ -60,14 +60,15 @@ pipeline {
             }
         }
 
-        stage('Tag Docker Image') {
+        stage('Tagging Docker Image') {
             steps {
                 script {
                     sh "docker tag ${IMAGE_REPO_NAME}:${IMAGE_TAG} ${REPOSITORY_URI}:${IMAGE_TAG}"
                 }
             }
         }
-        stage('Run Docker Container') {
+		
+		stage('Run Docker Container') {
             steps {
                 script {
                     echo "Running Docker container on port 8080"
@@ -77,13 +78,12 @@ pipeline {
             }
         }
 
-        stage('Push Image to ECR') {
+        stage('Pushing Image to ECR') {
             steps {
                 script {
                     sh "docker push ${REPOSITORY_URI}:${IMAGE_TAG}"
                 }
             }
         }
-
     }
 }
