@@ -71,11 +71,10 @@ pipeline {
         stage('Running Docker Container on Slave EC2') {
             steps {
                 script {
-                    // Stop and remove any running container with the same name
-                    sh "docker stop ${IMAGE_REPO_NAME} || true && docker rm ${IMAGE_REPO_NAME} || true"
-
-                    // Run the new container
-                    sh "docker run -d --name ${IMAGE_REPO_NAME} -p 9000:9000 ${REPOSITORY_URI}:${IMAGE_TAG}"
+                    // Run the Tomcat container without stopping/removing any previous instance
+                    sh """
+                        docker run -d --name ${IMAGE_REPO_NAME}_$(date +%s) -p 9000:9000 ${REPOSITORY_URI}:${IMAGE_TAG}
+                    """
                 }
             }
         }
