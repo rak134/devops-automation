@@ -18,14 +18,6 @@ pipeline {
     }
 
     stages {
-        stage('Cleanup Docker Environment') {
-            steps {
-                script {
-                    sh 'docker system prune -af || true'
-                }
-            }
-        }
-
         stage('Logging into AWS ECR') {
             steps {
                 script {
@@ -52,35 +44,20 @@ pipeline {
             }
         }
 
-        stage('Building Docker Image') {
+        stage('Pulling Docker Image from ECR') {
             steps {
                 script {
-                    sh "docker build -t ${IMAGE_REPO_NAME}:${IMAGE_TAG} ."
+                    sh "docker pull ${REPOSITORY_URI}:${IMAGE_TAG}"
                 }
             }
         }
 
-        stage('Tagging Docker Image') {
+        stage('Running Docker Container on Slave EC2') {
             steps {
                 script {
-                    sh "docker tag ${IMAGE_REPO_NAME}:${IMAGE_TAG} ${REPOSITORY_URI}:${IMAGE_TAG}"
-                }
-            }
-        }
-
-        stage('Pushing Image to ECR') {
-            steps {
-                script {
-                    sh "docker push ${REPOSITORY_URI}:${IMAGE_TAG}"
-                }
-            }
-        }
-
-        stage('Final Cleanup') {
-            steps {
-                script {
-                    sh "docker rmi -f ${IMAGE_REPO_NAME}:${IMAGE_TAG} || true"
-                    sh "docker rmi -f ${REPOSITORY_URI}:${IMAGE_TAG} || true"
+                    sh """
+                        docker run -d --name ${IMAGE_REPO_NAME} -p 9000:9000 ${REPOSITORY_URI}:${IMAGE_TAG}
+                    """
                 }
             }
         }
