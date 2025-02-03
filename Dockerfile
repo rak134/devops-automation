@@ -23,6 +23,6 @@ RUN apt-get update && apt-get install -y wget && \
 # Copy built WAR file from Maven build
 COPY --from=builder /app/target/*.war /usr/local/tomcat/webapps/sample-webapp.war
 
-EXPOSE 8080
+EXPOSE 9000
 
 CMD ["sh", "-c", "/usr/local/tomcat/bin/catalina.sh run"]
