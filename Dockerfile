@@ -1,28 +1,28 @@
-FROM ubuntu:22.04
+# Stage 1: Build the Maven Project
+FROM maven:3.8.5-openjdk-11 AS builder
+WORKDIR /app
 
-# Set environment variables
-ENV TOMCAT_VERSION=10.1.34
-ENV CATALINA_HOME=/usr/local/tomcat
-ENV PATH=$CATALINA_HOME/bin:$PATH
+# Copy project files and build
+COPY pom.xml .
+RUN mvn dependency:go-offline
 
-# Update package list and install necessary packages
-RUN apt-get update -y && \
-    apt-get install -y openjdk-17-jdk git curl && \
-    apt-get clean
+COPY src ./src
+RUN mvn clean package -DskipTests
 
-# Download and install Apache Tomcat
-RUN curl -L https://archive.apache.org/dist/tomcat/tomcat-10/v$TOMCAT_VERSION/bin/apache-tomcat-$TOMCAT_VERSION.tar.gz -o /tmp/tomcat.tar.gz && \
-    mkdir -p $CATALINA_HOME && \
-    tar -xzf /tmp/tomcat.tar.gz -C $CATALINA_HOME --strip-components=1 && \
-    rm /tmp/tomcat.tar.gz
+# Stage 2: Set Up Tomcat Server and Deploy WAR
+FROM openjdk:11-jdk
+WORKDIR /usr/local/tomcat
 
-# Copy the web application to the Tomcat webapps directory
-COPY /target/sample-webapp.war $CATALINA_HOME/webapps/
+# Install Tomcat
+RUN apt-get update && apt-get install -y wget && \
+    wget https://dlcdn.apache.org/tomcat/tomcat-10/v10.1.34/bin/apache-tomcat-10.1.34.tar.gz && \
+    tar -xvzf apache-tomcat-10.1.34.tar.gz && \
+    mv apache-tomcat-10.1.34 tomcat && \
+    rm apache-tomcat-10.1.34.tar.gz
 
+# Copy built WAR file from Maven build
+COPY --from=builder /app/target/*.war /usr/local/tomcat/webapps/sample-webapp.war
 
-
-# Expose the default Tomcat port
 EXPOSE 8080
 
-# Start Tomcat
-CMD ["catalina.sh", "run"]
+CMD ["sh", "-c", "/usr/local/tomcat/bin/catalina.sh run"]
