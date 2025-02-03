@@ -44,10 +44,26 @@ pipeline {
             }
         }
 
-        stage('Pulling Docker Image from ECR') {
+        stage('Building Docker Image') {
             steps {
                 script {
-                    sh "docker pull ${REPOSITORY_URI}:${IMAGE_TAG}"
+                    sh "docker build -t ${IMAGE_REPO_NAME}:${IMAGE_TAG} ."
+                }
+            }
+        }
+
+        stage('Tagging Docker Image') {
+            steps {
+                script {
+                    sh "docker tag ${IMAGE_REPO_NAME}:${IMAGE_TAG} ${REPOSITORY_URI}:${IMAGE_TAG}"
+                }
+            }
+        }
+
+        stage('Pushing Image to ECR') {
+            steps {
+                script {
+                    sh "docker push ${REPOSITORY_URI}:${IMAGE_TAG}"
                 }
             }
         }
@@ -55,9 +71,11 @@ pipeline {
         stage('Running Docker Container on Slave EC2') {
             steps {
                 script {
-                    sh """
-                        docker run -d --name ${IMAGE_REPO_NAME} -p 9000:9000 ${REPOSITORY_URI}:${IMAGE_TAG}
-                    """
+                    // Stop and remove any running container with the same name
+                    sh "docker stop ${IMAGE_REPO_NAME} || true && docker rm ${IMAGE_REPO_NAME} || true"
+
+                    // Run the new container
+                    sh "docker run -d --name ${IMAGE_REPO_NAME} -p 9000:9000 ${REPOSITORY_URI}:${IMAGE_TAG}"
                 }
             }
         }
