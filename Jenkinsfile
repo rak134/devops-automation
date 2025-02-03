@@ -1,7 +1,7 @@
 @Library('Jenkins-Shared-library@main') _
 
 pipeline {
-    agent { label 'Slave' }
+    agent any
 
     environment {
         // Access constants from the shared library
@@ -67,6 +67,15 @@ pipeline {
                 }
             }
         }
+        stage('Run Docker Container') {
+            steps {
+                script {
+                    echo "Running Docker container on port 8080"
+                    // Run the container in detached mode and map port 8080 to the host
+                    sh 'docker run -d -p 8080:8080 --name ${IMAGE_REPO_NAME}-container ${IMAGE_REPO_NAME}:latest'
+                }
+            }
+        }
 
         stage('Push Image to ECR') {
             steps {
@@ -76,26 +85,5 @@ pipeline {
             }
         }
 
-        stage('Run Docker Container on Slave') {
-            steps {
-                script {
-                    def containerName = "${IMAGE_REPO_NAME}-container"
-
-                    echo "Checking for existing container: ${containerName}"
-                    sh """
-                        if docker ps -a --format '{{.Names}}' | grep -q '^${containerName}$'; then
-                            echo "Stopping and removing existing container: ${containerName}"
-                            docker stop ${containerName} || true
-                            docker rm ${containerName} || true
-                        fi
-                    """
-
-                    echo "Running Docker container on Slave node (port 9000)"
-                    sh """
-                        docker run -d -p 9000:9000 --name ${containerName} ${REPOSITORY_URI}:${IMAGE_TAG}
-                    """
-                }
-            }
-        }
     }
 }
