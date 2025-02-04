@@ -20,9 +20,12 @@ RUN apt-get update && apt-get install -y wget && \
     mv apache-tomcat-10.1.34 tomcat && \
     rm apache-tomcat-10.1.34.tar.gz
 
+# Give execution permission to Tomcat scripts
+RUN chmod +x /usr/local/tomcat/tomcat/bin/*.sh
+
 # Copy built WAR file from Maven build
-COPY --from=builder /app/target/*.war /usr/local/tomcat/webapps/sample-webapp.war
+COPY --from=builder /app/target/*.war /usr/local/tomcat/tomcat/webapps/sample-webapp.war
 
 EXPOSE 8080
 
-CMD ["sh", "-c", "/usr/local/tomcat/bin/catalina.sh run"]
+CMD ["/usr/local/tomcat/tomcat/bin/catalina.sh", "run"]
