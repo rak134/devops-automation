@@ -18,11 +18,16 @@ pipeline {
     }
 
     stages {
-        stage('Cleanup Docker Environment') {
+        stage('Clone Git Repository') {
             steps {
-                script {
-                    sh 'docker system prune -af || true'
-                }
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/main']],
+                    userRemoteConfigs: [[
+                        url: GIT_REPO_URL,
+                        credentialsId: GIT_CREDENTIALS_ID
+                    ]]
+                ])
             }
         }
 
@@ -39,16 +44,15 @@ pipeline {
             }
         }
 
-        stage('Cloning Git Repository') {
+        stage('Cleanup Docker Environment') {
             steps {
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: '*/main']],
-                    userRemoteConfigs: [[
-                        url: GIT_REPO_URL,
-                        credentialsId: GIT_CREDENTIALS_ID
-                    ]]
-                ])
+                script {
+                    sh """
+                        docker system prune -af || true
+                        docker stop ${IMAGE_REPO_NAME}-container || true
+                        docker rm ${IMAGE_REPO_NAME}-container || true
+                    """
+                }
             }
         }
 
@@ -67,13 +71,16 @@ pipeline {
                 }
             }
         }
-		
-		stage('Run Docker Container') {
+
+        stage('Run Docker Container') {
             steps {
                 script {
                     echo "Running Docker container on port 8080"
-                    // Run the container in detached mode and map port 8080 to the host
-                    sh 'docker run -d -p 8080:8080 --name ${IMAGE_REPO_NAME}-container ${IMAGE_REPO_NAME}:latest'
+
+                    sh """
+                        docker run -d -p 8080:8080 --name ${IMAGE_REPO_NAME}-container ${IMAGE_REPO_NAME}:${IMAGE_TAG}
+                        sleep 10  # Allow Tomcat time to initialize
+                    """
                 }
             }
         }
@@ -84,6 +91,15 @@ pipeline {
                     sh "docker push ${REPOSITORY_URI}:${IMAGE_TAG}"
                 }
             }
+        }
+    }
+
+    post {
+        success {
+            echo "Deployment successful! Access Tomcat at http://localhost:8080/sample-webapp"
+        }
+        failure {
+            echo "Deployment failed. Check Jenkins logs for errors."
         }
     }
 }
